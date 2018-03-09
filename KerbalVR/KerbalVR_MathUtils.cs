@@ -2,13 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using UnityEngine;
 using Valve.VR;
 
 namespace KerbalVR
 {
-    class MathUtils
+    public static class MathUtils
     {
         /// <summary>
         /// Converts a pose matrix provided by OpenVR to a set of Euler angles, in radians.
@@ -104,5 +103,6 @@ namespace KerbalVR
             mat44_unity.m33 = mat44_openvr.m15;
             return mat44_unity;
         }
-    }
+
+    } // class MathUtils
 }
