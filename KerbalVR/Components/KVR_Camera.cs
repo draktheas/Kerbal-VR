@@ -1,15 +1,17 @@
 ﻿using UnityEngine;
+using Valve.VR;
 
 namespace KerbalVR.Components
 {
-    public class KVR_ExternalCamera : MonoBehaviour
+    public class KVR_Camera : MonoBehaviour
     {
         public bool IsInternalCameraEnabled {get; private set; }
 
-        public int RenderTextureW { get; private set; }
-        public int RenderTextureH { get; private set; }
-        public int RenderTextureD { get; private set; }
+        public uint RenderTextureW { get; private set; }
+        public uint RenderTextureH { get; private set; }
+        public uint RenderTextureD { get; private set; }
         public RenderTextureFormat RenderTextureFormat { get; private set; }
+        public KVR_HmdRenderer HmdRenderer { get; private set; }
 
         // this camera renders the galaxy background
         public GameObject GalaxyCameraGameObject { get; private set; }
@@ -109,7 +111,7 @@ namespace KerbalVR.Components
             GalaxyCamera.allowHDR = false;
             GalaxyCamera.allowMSAA = true;
             GalaxyCamera.depthTextureMode = DepthTextureMode.None;
-            GalaxyCamera.enabled = true;
+            GalaxyCamera.enabled = false;
 
             ScaledSpaceCameraGameObject = new GameObject("KVR_Camera_ScaledSpaceCamera");
             ScaledSpaceCameraGameObject.transform.SetParent(transform);
@@ -128,7 +130,7 @@ namespace KerbalVR.Components
             ScaledSpaceCamera.allowHDR = false;
             ScaledSpaceCamera.allowMSAA = true;
             ScaledSpaceCamera.depthTextureMode = DepthTextureMode.None;
-            ScaledSpaceCamera.enabled = true;
+            ScaledSpaceCamera.enabled = false;
 
             Camera01GameObject = new GameObject("KVR_Camera_Camera01");
             Camera01GameObject.transform.SetParent(transform);
@@ -152,7 +154,7 @@ namespace KerbalVR.Components
             Camera01.allowHDR = false;
             Camera01.allowMSAA = true;
             Camera01.depthTextureMode = DepthTextureMode.None;
-            Camera01.enabled = true;
+            Camera01.enabled = false;
 
             Camera00GameObject = new GameObject("KVR_Camera_Camera00");
             Camera00GameObject.transform.SetParent(transform);
@@ -176,7 +178,7 @@ namespace KerbalVR.Components
             Camera00.allowHDR = false;
             Camera00.allowMSAA = true;
             Camera00.depthTextureMode = DepthTextureMode.None;
-            Camera00.enabled = true;
+            Camera00.enabled = false;
 
             InternalCameraGameObject = new GameObject("KVR_Camera_InternalCamera");
             InternalCameraGameObject.transform.SetParent(transform);
@@ -184,26 +186,29 @@ namespace KerbalVR.Components
             InternalCameraGameObject.transform.localRotation = Quaternion.identity;
             InternalCamera = InternalCameraGameObject.AddComponent<Camera>();
             InternalCamera.clearFlags = CameraClearFlags.Depth;
-            InternalCamera.backgroundColor = new Color(1f, 0f, 0f, 1f);
-            InternalCamera.cullingMask = (1 << 20); // layer 20: Internal
-            InternalCamera.nearClipPlane = 0.05f;
-            InternalCamera.farClipPlane = 300f;
+            InternalCamera.backgroundColor = new Color(0.192f, 0.302f, 0.475f, 0.020f);
+            InternalCamera.cullingMask =
+                (1 << 16) | // layer 16: kerbals
+                (1 << 20); // layer 20: Internal Space
+            InternalCamera.nearClipPlane = 0.01f;
+            InternalCamera.farClipPlane = 50f;
             InternalCamera.depth = 0f;
             InternalCamera.useOcclusionCulling = true;
             InternalCamera.allowHDR = false;
             InternalCamera.allowMSAA = true;
             InternalCamera.depthTextureMode = DepthTextureMode.None;
-            InternalCamera.enabled = true;
+            InternalCamera.enabled = false;
 
             // set camera parameters
             FieldOfView = 60f;
         }
 
         public void Init(
+            EVREye eye,
             bool renderInternal = true,
-            int rtW = 512,
-            int rtH = 512,
-            int rtD = 24,
+            uint rtW = 512,
+            uint rtH = 512,
+            uint rtD = 24,
             RenderTextureFormat rtF = RenderTextureFormat.ARGB32) {
             
             RenderTextureW = rtW;
@@ -213,19 +218,24 @@ namespace KerbalVR.Components
 
             // initialize render target
             CameraRenderTexture = new RenderTexture(
-                RenderTextureW, RenderTextureH, RenderTextureD, RenderTextureFormat);
+                (int)RenderTextureW, (int)RenderTextureH, (int)RenderTextureD, RenderTextureFormat);
             GalaxyCamera.targetTexture = CameraRenderTexture;
             ScaledSpaceCamera.targetTexture = CameraRenderTexture;
             Camera01.targetTexture = CameraRenderTexture;
             Camera00.targetTexture = CameraRenderTexture;
             InternalCamera.targetTexture = CameraRenderTexture;
+
+            HmdRenderer = InternalCameraGameObject.AddComponent<KVR_HmdRenderer>();
+            HmdRenderer.Init(eye, CameraRenderTexture);
+
+            InternalCamera.enabled = true;
         }
 
         public void Render() {
-            GalaxyCamera.Render();
+            /*GalaxyCamera.Render();
             ScaledSpaceCamera.Render();
             Camera01.Render();
-            Camera00.Render();
+            Camera00.Render();*/
             if (IsInternalCameraEnabled) {
                 InternalCamera.Render();
             }

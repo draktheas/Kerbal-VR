@@ -84,6 +84,13 @@ namespace KerbalVR {
         #endregion
 
 
+        public GameObject vrCamL, vrCamR;
+        public Components.KVR_Camera vrCamComponentL, vrCamComponentR;
+
+        private static uint renderTextureWidth = 0;
+        private static uint renderTextureHeight = 0;
+
+
         /// <summary>
         /// Initialize the application GUI, singleton classes, and initialize OpenVR.
         /// </summary>
@@ -122,6 +129,8 @@ namespace KerbalVR {
 
             // don't destroy this object when switching scenes
             DontDestroyOnLoad(this);
+
+            initOpenVR();
         }
 
         private void initOpenVR() {
@@ -162,7 +171,7 @@ namespace KerbalVR {
         /// <summary>
         /// On LateUpdate, dispatch OpenVR events, run the main HMD loop code.
         /// </summary>
-        private void LateUpdate() {
+        private void Update() {
             // dispatch any OpenVR events
             if (hmdIsInitialized) {
                 DispatchOpenVREvents();
@@ -202,6 +211,7 @@ namespace KerbalVR {
                     HmdMatrix34_t vrLeftEyeTransform = OpenVR.System.GetEyeToHeadTransform(EVREye.Eye_Left);
                     HmdMatrix34_t vrRightEyeTransform = OpenVR.System.GetEyeToHeadTransform(EVREye.Eye_Right);
                     vrCompositorError = OpenVR.Compositor.WaitGetPoses(renderPoses, gamePoses);
+                    Components.KVR_HmdRenderer.isPoseUpdated = true;
 
                     if (vrCompositorError != EVRCompositorError.None) {
                         throw new Exception("WaitGetPoses failed: (" + (int)vrCompositorError + ") " + vrCompositorError.ToString());
@@ -216,8 +226,20 @@ namespace KerbalVR {
                     // don't highlight parts with the mouse
                     Mouse.HoveredPart = null;
 
+
+                    if (vrCamL == null) {
+                        vrCamL = new GameObject("KVR_HmdCamera_L");
+                        vrCamComponentL = vrCamL.AddComponent<Components.KVR_Camera>();
+                        vrCamComponentL.Init(EVREye.Eye_Left, true, renderTextureWidth, renderTextureHeight);
+                    }
+                    if (vrCamR == null) {
+                        vrCamR = new GameObject("KVR_HmdCamera_R");
+                        vrCamComponentR = vrCamR.AddComponent<Components.KVR_Camera>();
+                        vrCamComponentR.Init(EVREye.Eye_Right, true, renderTextureWidth, renderTextureHeight);
+                    }
+
                     // render each eye
-                    for (int i = 0; i < 2; i++) {
+                    /*for (int i = 0; i < 2; i++) {
                         RenderHmdCameras(
                             (EVREye)i,
                             hmdTransform,
@@ -232,7 +254,7 @@ namespace KerbalVR {
                     // render to the game screen
                     if (RenderHmdToScreen) {
                         Graphics.Blit(hmdEyeRenderTexture[0], null as RenderTexture);
-                    }
+                    }*/
 
                 } catch (Exception e) {
                     // shut off VR when an error occurs
@@ -407,8 +429,6 @@ namespace KerbalVR {
             ResetInitialHmdPosition();
 
             // get HMD render target size
-            uint renderTextureWidth = 0;
-            uint renderTextureHeight = 0;
             OpenVR.System.GetRecommendedRenderTargetSize(ref renderTextureWidth, ref renderTextureHeight);
 
             // at the moment, only Direct3D12 is working with Kerbal Space Program

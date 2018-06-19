@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using Valve.VR;
 
@@ -11,12 +12,14 @@ namespace KerbalVR.Components
         private static bool isRightEyeRendered = false;
 
         public EVREye Eye { get; private set; }
-        public Texture_t HmdEyeTexture { get; private set; }
 
-        public void Init(EVREye eye) {
+        private Texture_t hmdEyeTexture;
+        private VRTextureBounds_t hmdTextureBounds;
+        private RenderTexture hmdEyeRenderTexture;
+
+        public void Init(EVREye eye, RenderTexture rt) {
             Eye = eye;
-            HmdEyeTexture = new Texture_t();
-            HmdEyeTexture.eColorSpace = EColorSpace.Auto;
+            hmdEyeRenderTexture = rt;
 
             ETextureType textureType = ETextureType.DirectX;
             switch (SystemInfo.graphicsDeviceType) {
@@ -37,16 +40,36 @@ namespace KerbalVR.Components
                     throw new InvalidOperationException(SystemInfo.graphicsDeviceType.ToString() + " not supported");
             }
 
-            HmdEyeTexture.eType = textureType;
+            hmdEyeTexture = new Texture_t() {
+                eColorSpace = EColorSpace.Auto,
+                eType = textureType,
+            };
+
+            // set rendering bounds on texture to render
+            hmdTextureBounds.uMin = 0.0f;
+            hmdTextureBounds.uMax = 1.0f;
+            hmdTextureBounds.vMin = 1.0f; // flip the vertical coordinate for some reason
+            hmdTextureBounds.vMax = 0.0f;
+
+            Utils.Log(gameObject.name + " init");
         }
         
         public void OnRenderImage(RenderTexture src, RenderTexture dest) {
-            if (isPoseUpdated) {
-                if (eye == EVREye.Eye_Left) {
-                    HmdEyeTexture.handle = src.GetNativeTexturePtr();
 
-                    EVRCompositorError error = EVRCompositorError.None;
-                    error = OpenVR.Compositor.Submit(eye, ref hmdLeftEyeTexture, ref hmdTextureBounds, EVRSubmitFlags.Submit_Default);
+            Utils.Log("OnRenderImage " + gameObject.name);
+
+            if (isPoseUpdated) {
+                lock (hmdEyeRenderTexture)
+                    lock (src)  {
+                        hmdEyeTexture.handle = src.GetNativeTexturePtr();
+                        EVRCompositorError error = EVRCompositorError.None;
+                        error = OpenVR.Compositor.Submit(Eye, ref hmdEyeTexture, ref hmdTextureBounds, EVRSubmitFlags.Submit_Default);
+                    }
+
+                if (Eye == EVREye.Eye_Left) {
+                    isLeftEyeRendered = true;
+                } else {
+                    isRightEyeRendered = true;
                 }
             }
 
